@@ -28,11 +28,16 @@ Strona nie zawiera analityki, zewnętrznych fontów, pikseli śledzących ani fo
 - `app.js`: dane, interakcje i eksport kalendarza.
 - `favicon.svg`: lokalna ikona.
 
-Dane programu edytuje się w tablicy `sessions` w `app.js`. Publikacja nie nastąpiła w ramach tworzenia plików.
+Dane programu edytuje się w tablicy `sessions` w `app.js`.
+
+## Opublikowane demo
+https://stanhoder-boop.github.io/hoder-agenda-demo-2027/
+
+Publiczna, statyczna strona GitHub Pages. Repozytorium jest odrębne od systemów firmowych.
 
 ## Testy
 - `node --check app.js` — kontrola składni JavaScript.
 - `node test-logic.cjs` — testy logiki bez dodatkowych zależności (Node.js). Sprawdza 24 sesje, unikalne identyfikatory, filtrowanie, zapis, uszkodzoną/niedostępną pamięć oraz format i strefę czasową ICS.
 - `node test-demo.cjs` — testy interfejsu z Playwright i Chromium dostępnym pod `/usr/bin/chromium`. W razie potrzeby dostosuj ścieżkę przeglądarki. Tworzy zrzuty `qa-desktop.png` i `qa-mobile.png`.
 
-W środowisku tworzenia testy składni i logiki przeszły. Pełne testy przeglądarkowe i zrzuty ekranu nie zostały wykonane: uruchomienie Chromium zostało zatrzymane przez ograniczenie gniazd systemowych (`socket: Operation not permitted`). Plik testu jest przygotowany do uruchomienia w środowisku z działającą przeglądarką. Strona nie wymaga plików testowych do publikacji.
+W środowisku tworzenia testy składni i logiki przeszły. Po publikacji 6 listopada 2026 sprawdzono w przeglądarce działający URL, wygląd desktop, wszystkie 24 sesje, wyszukiwanie bez polskich znaków, zapis i odczyt własnej agendy po odświeżeniu, szczegóły oraz Escape, wybór dni i pobranie pliku ICS. Pełna automatyczna macierz testów interfejsu, w tym mobilne szerokości, pozostaje do uruchomienia w środowisku z działającym lokalnym Chromium. Strona nie wymaga plików testowych do publikacji.
