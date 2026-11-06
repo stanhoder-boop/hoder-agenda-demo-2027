@@ -1,0 +1,37 @@
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+(async()=>{
+ const browser=await chromium.launch({headless:true,executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
+ const page=await browser.newPage({viewport:{width:1440,height:1000}});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('file://'+path.join(__dirname,'index.html'));
+ assert.equal(await page.locator('.session-card').count(),6);
+ await page.screenshot({path:path.join(__dirname,'qa-desktop.png'),fullPage:true});
+ await page.locator('#all-days').click();assert.equal(await page.locator('.session-card').count(),24);
+ await page.locator('#search').fill('jakosc');assert.equal(await page.locator('.session-card').count(),1);
+ await page.locator('#reset').click();await page.locator('#category').selectOption('Warsztaty');assert.equal(await page.locator('.session-card').count(),6);
+ await page.locator('#reset').click();
+ await page.locator('[data-save="hoder-1"]').click();assert.equal(await page.locator('#saved-count').textContent(),'1');
+ await page.reload();assert.equal(await page.locator('#saved-count').textContent(),'1');
+ await page.locator('#nav-saved').click();assert.equal(await page.locator('.session-card').count(),1);
+ await page.locator('.session-title').click();assert(await page.locator('#session-dialog').evaluate(el=>el.open));
+ await page.keyboard.press('Escape');assert.equal(await page.locator('#session-dialog').evaluate(el=>el.open),false);
+ await page.locator('.session-title').click();await page.locator('#dialog-content [data-save]').click();assert.equal(await page.locator('#saved-count').textContent(),'0');
+ await page.locator('.dialog-close').click();assert.equal(await page.locator('.empty').count(),1);
+ await page.locator('#empty-reset').click();assert.equal(await page.locator('.session-card').count(),24);
+ await page.locator('[data-save="hoder-1"]').click();await page.locator('[data-save="hoder-24"]').click();
+ const downloadPromise=page.waitForEvent('download');await page.locator('#export').click();const download=await downloadPromise;const downloaded=await download.path();const calendar=fs.readFileSync(downloaded,'utf8');
+ assert.equal((calendar.match(/BEGIN:VEVENT/g)||[]).length,2);assert(calendar.includes('DTSTART:20270115T130000Z'));assert(calendar.includes('DTEND:20270118T113000Z'));assert(calendar.includes('SUMMARY:[DEMO]'));
+ calendar.split('\r\n').forEach(line=>assert(Buffer.byteLength(line)<=75));
+ await page.locator('#search').fill('nieistniejącytemat');assert.equal(await page.locator('.empty').count(),1);await page.locator('#reset').click();
+ page.once('dialog',dialog=>dialog.dismiss());await page.locator('#clear-saved').click();assert.equal(await page.locator('#saved-count').textContent(),'2');
+ page.once('dialog',dialog=>dialog.accept());await page.locator('#clear-saved').click();assert.equal(await page.locator('#saved-count').textContent(),'0');
+ for(const width of [320,375,390,768,1440]){await page.setViewportSize({width,height:900});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`Horizontal overflow at ${width}`);}
+ await page.setViewportSize({width:390,height:844});await page.locator('[data-day="15"]').click();await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:path.join(__dirname,'qa-mobile.png'),fullPage:true});
+ const blocked=await browser.newPage();await blocked.addInitScript(()=>{Object.defineProperty(window,'localStorage',{get(){throw new Error('disabled')}})});await blocked.goto('file://'+path.join(__dirname,'index.html'));await blocked.locator('[data-save="hoder-1"]').click();assert.equal(await blocked.locator('#saved-count').textContent(),'1');assert((await blocked.locator('#storage-status').textContent()).includes('niedostępny'));
+ const malformed=await browser.newPage();await malformed.addInitScript(()=>localStorage.setItem('hoder-agenda-demo-2027-v1','bad json'));await malformed.goto('file://'+path.join(__dirname,'index.html'));assert.equal(await malformed.locator('.session-card').count(),6);
+ assert.deepEqual(errors,[]);
+ await browser.close();console.log('PASS: 24 sessions; search normalization; category filter; saved persistence; dialog/Escape; empty states; ICS dates/count/UTF-8 folding; clear cancel/confirm; 320–1440px overflow; localStorage denied/malformed; no JS errors.');
+})().catch(e=>{console.error(e);process.exit(1)});
